@@ -1,4 +1,5 @@
 import urllib.request
+import os
 
 def pywget(url):
     fileName = getFileName(url)
@@ -9,9 +10,13 @@ def pywget(url):
     except:
         print('Network error. Please try again')
 
-
-
 def getFileName(url):
+    fileName = getUrlFileName(url)
+    if (os.path.exists(urlFileName)):
+        fileName = addPrefixNum(fileName)
+    return fileName
+
+def getUrlFileName(url):
     lastIndex = 0
     fileNameDefined = False
     
@@ -30,5 +35,7 @@ def getFileName(url):
         return url[lastIndex:]
     return 'index.html'
 
-def checkExists(fileName):
+def addPrefixNum(fileName):
+    
+            
     
