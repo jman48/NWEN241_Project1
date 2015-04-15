@@ -10,18 +10,6 @@ def pywget(url):
     except:
         print('Network error. Please try again')
 
-def getFileName(url):
-    """
-    This function gets the file name for the url that will be saved to disk.
-    
-    This may involve adding a number to the file name if there exists a file with
-    the same name
-    """
-    fileName = getUrlFileName(url)
-    if (os.path.exists(fileName)):
-        fileName = addPrefixNum(fileName, 0)
-    return fileName
-
 def getUrlFileName(url):
     """
     This function gets the filename from the url provided.
@@ -67,6 +55,3 @@ def getPrefixedName(fileName, prefix):
             return fileName[:index] + '.' + str(prefix) + fileName[index:]
         index = index-1
     #Do something as we did not find the file extension
-    
-            
-    
