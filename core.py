@@ -50,7 +50,7 @@ def getUrlFileName(url):
 
 def addPrefixNum(fileName, times):
     """
-    This function will add a number to the file name so that is is unique. i.e index.1.html
+    This recursive function will add a number to the file name so that is is unique. i.e index.1.html
     """
     if (os.path.exists(getPrefixedName(fileName, times))):
         return addPrefixNum(fileName, times+1)
