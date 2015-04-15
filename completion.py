@@ -3,12 +3,35 @@ import os
 
 def pywget(url):
     fileName = getFileName(url)
+    downLoadFile(url, fileName)
+    file = open(fileName)
+    getLinkedFiles(file)
+
+def getLinkedFiles(file):
+    return
+def downLoadFile(url, fileName):
+    """
+    Download a file to disk. Will nmake sure that the downloaded files name
+    is unique. returns the file input stream
+    """
     print('File ' + fileName + ' downloading....')
     try:
-        fileInput = urllib.request.urlretrieve(url, fileName)
+        urllib.request.urlretrieve(url, fileName)
         print('File downloaded!')
     except:
         print('Network error. Please try again')
+
+def getFileName(url):
+    """
+    This function gets the file name for the url that will be saved to disk.
+    
+    This may involve adding a number to the file name if there exists a file with
+    the same name
+    """
+    fileName = getUrlFileName(url)
+    if (os.path.exists(fileName)):
+        fileName = addPrefixNum(fileName, 0)
+    return fileName
 
 def getUrlFileName(url):
     """
