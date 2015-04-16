@@ -1,14 +1,25 @@
+from html.parser import HTMLParser
+from urllib.parse import urlparse
 import urllib.request
 import os
 
 def pywget(url):
+    #Get root file
     fileName = getFileName(url)
     downLoadFile(url, fileName)
-    file = open(fileName)
-    getLinkedFiles(file)
+    
+    links = getLinkedFiles(fileName)
+    """ For each link check it is in same domain. If so download to current directory and update reference in root file """
+    
 
-def getLinkedFiles(file):
-    return
+def getLinkedFiles(fileName):
+    """ Get all files that are linked from the file specified """
+    file = open(fileName, 'r')
+    h = HTMLlinks()
+    h.feed(file.read())
+    return h.links
+        
+
 def downLoadFile(url, fileName):
     """
     Download a file to disk. Will nmake sure that the downloaded files name
@@ -78,3 +89,19 @@ def getPrefixedName(fileName, prefix):
             return fileName[:index] + '.' + str(prefix) + fileName[index:]
         index = index-1
     #Do something as we did not find the file extension
+
+class HTMLlinks(HTMLParser):
+    """ A custom html parser class to get and store all links in an html ducument """
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.links = []
+        
+    def handle_starttag(self, tag, attrs):
+        """ Get all links from an html document"""
+        
+        #Get all href values from an 'a' tag
+        if(tag == 'a' and attrs[0][0] =='href'):
+            self.links.append(attrs[0])
+        #Get all src values from all 'img' tags
+        elif(tag == 'img' and attrs[0][0] =='src'):
+            self.links.append(attrs[0])
