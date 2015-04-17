@@ -5,22 +5,26 @@ import os
 
 def pywget(url):
     #Get root file
-    fileName = getFileName(url)
-    downLoadFile(url, fileName)
+    rootFileName = getFileName(url)
+    downLoadFile(url, rootFileName)
     rootUrl = urlparse(url)
     
-    links = getLinkedFiles(fileName)
+    links = getLinkedFiles(rootFileName)
     for link in links:
         linkUrl = urlparse(link[1])
-        linkFileName = getFileName(linkUrl)
-        
-        #Check that the linked file is in the same domain as root
+        linkFileName = getFileName(link[1])        
+
         if (linkUrl.netloc == ''):
-            downLoadFile(rootUrl.netloc + linkUrl, linkFileName)
+            #If the link is relative then get the path to the link from the root url
+            downLoadFile(getPath(url, getUrlFileName(url)) + linkUrl.path, linkFileName)
         elif (linkUrl.netloc == rootUrl.netloc):
-            downLoadFile(linkUrl, linkFileName)
+            downLoadFile(linkUrl.geturl(), linkFileName)
     """ For each link check it is in same domain. If so download to current directory and update reference in root file """
-    
+
+def getPath(url, fileName):
+    """ Returns the full url minus the file name. Makes it easy to get other files in the same directory"""
+    index = url.find(fileName)
+    return url[:index]
 
 def getLinkedFiles(fileName):
     """ Get all files that are linked from the file specified """
@@ -40,7 +44,7 @@ def downLoadFile(url, fileName):
         urllib.request.urlretrieve(url, fileName)
         print('File downloaded!')
     except:
-        print('Network error. Please try again')
+        print('Network error downloading from "' + url + '". Please try again')
 
 def getFileName(url):
     """
