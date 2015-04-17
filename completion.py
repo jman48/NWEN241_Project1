@@ -7,8 +7,18 @@ def pywget(url):
     #Get root file
     fileName = getFileName(url)
     downLoadFile(url, fileName)
+    rootUrl = urlparse(url)
     
     links = getLinkedFiles(fileName)
+    for link in links:
+        linkUrl = urlparse(link[1])
+        linkFileName = getFileName(linkUrl)
+        
+        #Check that the linked file is in the same domain as root
+        if (linkUrl.netloc == ''):
+            downLoadFile(rootUrl.netloc + linkUrl, linkFileName)
+        elif (linkUrl.netloc == rootUrl.netloc):
+            downLoadFile(linkUrl, linkFileName)
     """ For each link check it is in same domain. If so download to current directory and update reference in root file """
     
 
@@ -97,7 +107,7 @@ class HTMLlinks(HTMLParser):
         self.links = []
         
     def handle_starttag(self, tag, attrs):
-        """ Get all links from an html document"""
+        """ Get all links from an html document """
         
         #Get all href values from an 'a' tag
         if(tag == 'a' and attrs[0][0] =='href'):
