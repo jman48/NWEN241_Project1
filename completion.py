@@ -9,18 +9,41 @@ def pywget(url):
     downLoadFile(url, rootFileName)
     rootUrl = urlparse(url)
     
-    links = getLinkedFiles(rootFileName)
-    for link in links:
+    htmlParser = getLinkedFiles(rootFileName)
+    for index, link in enumerate(htmlParser.links):
+        #print(htmlParser.positions[index])
         linkUrl = urlparse(link[1])
         linkFileName = getFileName(link[1])        
 
         if (linkUrl.netloc == ''):
             #If the link is relative then get the path to the link from the root url
             downLoadFile(getPath(url, getUrlFileName(url)) + linkUrl.path, linkFileName)
+            updateRootLink(rootFileName, link[0], linkFileName, htmlParser.positions[index])
         elif (linkUrl.netloc == rootUrl.netloc):
             downLoadFile(linkUrl.geturl(), linkFileName)
-    """ For each link check it is in same domain. If so download to current directory and update reference in root file """
+            updateRootLink(rootFileName, link[0], linkFileName, htmlParser.positions[index])
+    """ Update reference in root file """
 
+def updateRootLink(rootFileName, linkType, linkFileName, pos):
+    rootFile = open(rootFileName, 'r')
+    rootData = rootFile.readlines()
+    rootFile.close()
+
+    line = pos[0] - 1
+    tag = rootData[line][pos[1]:] #pos[0] contains line number. pos[1] contains line offset
+    linkStart = tag.find(linkType + '="')  #Find either src=" or href=" in the tag
+    indexStart = tag.find('"', linkStart)
+    indexEnd = tag.find('"', indexStart + 1) + 1
+    rootData[line] = rootData[line].replace(tag, overWriteLink(indexStart, indexEnd, tag, linkFileName), 1)
+    print(rootData[line])
+    
+    rootFile = open(rootFileName, 'w')
+    rootFile.writelines(rootData)
+    rootFile.close()
+
+def overWriteLink(start, end, text, new):
+    return text[:start] + new + text[end:]
+    
 def getPath(url, fileName):
     """ Returns the full url minus the file name. Makes it easy to get other files in the same directory"""
     index = url.find(fileName)
@@ -31,7 +54,8 @@ def getLinkedFiles(fileName):
     file = open(fileName, 'r')
     h = HTMLlinks()
     h.feed(file.read())
-    return h.links
+    file.close()
+    return h
         
 
 def downLoadFile(url, fileName):
@@ -109,13 +133,16 @@ class HTMLlinks(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
         self.links = []
+        self.positions = []
         
     def handle_starttag(self, tag, attrs):
         """ Get all links from an html document """
         
         #Get all href values from an 'a' tag
         if(tag == 'a' and attrs[0][0] =='href'):
+            self.positions.append(self.getpos())
             self.links.append(attrs[0])
         #Get all src values from all 'img' tags
         elif(tag == 'img' and attrs[0][0] =='src'):
+            self.positions.append(self.getpos())
             self.links.append(attrs[0])
