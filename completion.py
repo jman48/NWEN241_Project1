@@ -8,9 +8,9 @@ def pywget(url):
     # Get root file
     rootFileName = getFileName(url)
     downLoadFile(url, rootFileName)
-    rootUrl = urlparse(url)
+    urlparse(url)
 
-    #Do not try and download links if file is not an html file
+    # Do not try and download links if file is not an html file
     if getExtension(rootFileName) == 'html' or getExtension(rootFileName) == 'htm':
         downloadlinks(rootFileName, url)
 
@@ -30,11 +30,11 @@ def downloadlinks(rootfilename, url):
         linkUrl = urlparse(link[1])
         linkFileName = getFileName(link[1])
 
-        if (linkUrl.netloc == ''):
+        if linkUrl.netloc == '':
             #If the link is relative then get the path to the link from the root url
             downLoadFile(getPath(url, getUrlFileName(url)) + linkUrl.path, linkFileName)
             updateRootLink(rootfilename, link[0], linkFileName, htmlParser.positions[index])
-        elif (linkUrl.netloc == rooturl.netloc):
+        elif linkUrl.netloc == rooturl.netloc:
             downLoadFile(linkUrl.geturl(), linkFileName)
             updateRootLink(rootfilename, link[0], linkFileName, htmlParser.positions[index])
 
@@ -155,7 +155,7 @@ def addPrefixNum(fileName, times):
     """
     if os.path.exists(getPrefixedName(fileName, times)):
         return addPrefixNum(fileName, times + 1)
-    return getPrefixedName(fileName, times);
+    return getPrefixedName(fileName, times)
 
 
 def getPrefixedName(fileName, prefix):
@@ -163,11 +163,11 @@ def getPrefixedName(fileName, prefix):
     This function will return the filename with the prefix added before the files extension
     """
 
-    index = len(fileName) - 1;
+    index = len(fileName) - 1
     while index > 0:
         if fileName[index] == '.':
             return fileName[:index] + '.' + str(prefix) + fileName[index:]
-        index += 1
+        index -= 1
 
 
 def getExtension(fileName):
@@ -197,3 +197,5 @@ class HTMLlinks(HTMLParser):
         elif tag == 'img' and attrs[0][0] == 'src':
             self.positions.append(self.getpos())
             self.links.append(attrs[0])
+
+pywget('http://homepages.ecs.vuw.ac.nz/~ian/nwen241/index.html')
