@@ -6,7 +6,7 @@ import os
 files = []
 
 
-def pywget(url, depth=2):
+def pywget(url, depth=3):
     # create root path
 
     # urlobj = urlparse(getPath(url, getUrlFileName(url)))
@@ -15,7 +15,7 @@ def pywget(url, depth=2):
     #
     # # create main directory
     # if not os.path.exists(urldir):
-    #     os.makedirs(urldir)
+    # os.makedirs(urldir)
 
     downloadroot(url, 2)
 
@@ -25,8 +25,8 @@ def downloadroot(url, depth, cd=''):
         return
 
     # Get root file
-    rootfile = File(getFileName(url), getfilelocation(url, cd), url)
-    downLoadFile(rootfile)
+    rootfile = File(geturlfilename(url), getfilename(url, cd), url)
+    downloadfile(rootfile)
     files.append(rootfile)
 
     # Do not try and download links if file is not an html file
@@ -42,25 +42,39 @@ def downloadlinks(rootfile, depth=0):
     :param url: The url of the root html file. Used to check if links are from the same domain
     :return:
     """
+    if depth < 0:
+        return
+    files.append(rootfile.filename)
+
+    htmlfiles = []
     htmlParser = getLinkedFiles(rootfile)
     for index, link in enumerate(htmlParser.links):
+        if geturlfilename(link[1]) in files:
+            continue
+
         linkurlparse = urlparse(link[1])
-        linkfile = File(getFileName(rootfile.url), getfilelocation(link[1], rootfile.getdirectory()),
+        linkfile = File(geturlfilename(link[1]),
+                        getfilename(link[1], rootfile.getdirectory()),
                         geturllocation(link[1], rootfile.url), link[0])
+
+        # Add them to list so we do not download them again
+        files.append(geturlfilename(link[1]))
 
         if linkurlparse.netloc == '':
             # If the link is relative then get the path to the link from the root url
-            downLoadFile(linkfile)
-            updaterootfilelink(rootfile, linkfile.filetype, linkfile.filename, htmlParser.positions[index])
+            downloadfile(linkfile)
+            updaterootfilelink(rootfile, linkfile, htmlParser.positions[index])
         elif linkurlparse.netloc == urlparse(rootfile.url).netloc:
-            downLoadFile(linkfile)
-            updaterootfilelink(rootfile, linkfile.filetype, linkfile.filename, htmlParser.positions[index])
-
+            downloadfile(linkfile)
+            updaterootfilelink(rootfile, linkfile, htmlParser.positions[index])
         if linkfile.getextension() == 'html':
-            downloadlinks(linkfile, depth - 1)
+            htmlfiles.append(linkfile)
+
+    for htmlfile in htmlfiles:
+        downloadlinks(htmlfile, depth - 1)
 
 
-def updaterootfilelink(rootfile, linkType, linkFileName, pos,):
+def updaterootfilelink(rootfile, linkfile, pos, ):
     """
     Update the link at pos to use the linkfilename.
 
@@ -76,10 +90,13 @@ def updaterootfilelink(rootfile, linkType, linkFileName, pos,):
 
     line = pos[0] - 1
     tag = rootData[line][pos[1]:]  # pos[0] contains line number. pos[1] contains line offset
-    linkStart = tag.find(linkType + '="')  # Find either src=" or href=" in the tag
+    linkStart = tag.find(linkfile.filetype + '="')  # Find either src=" or href=" in the tag
     indexStart = tag.find('"', linkStart)
     indexEnd = tag.find('"', indexStart + 1) + 1
-    rootData[line] = rootData[line].replace(tag, insert(indexStart, indexEnd, tag, linkFileName), 1)
+    rootData[line] = rootData[line].replace(tag, insert(indexStart, indexEnd, tag,
+                                                        linkfile.getrelativedir(rootfile.getdirectory())), 1)
+    # print(linkfile)
+    # print(linkfile.getrelativedir(rootfile.getdirectory()))
 
     rootFile = open(rootfile.filelocation, 'w')
     rootFile.writelines(rootData)
@@ -127,7 +144,7 @@ def getLinkedFiles(file, cd=''):
     return h
 
 
-def downLoadFile(file):
+def downloadfile(file):
     """
     Download a file to disk. Will make sure that the downloaded file name is unique.
     :param url: The url of the file to download
@@ -136,13 +153,17 @@ def downLoadFile(file):
     """
     print('File ' + file.filelocation + ' downloading....')
     try:
+        if not os.path.exists(file.getdirectory()):
+            os.makedirs(file.getdirectory())
+
         urllib.request.urlretrieve(file.url, file.filelocation)
-        print('File downloaded!')
-    except:
+        # print('File downloaded!')
+    except Exception as e:
+        print(str(e.strerror))
         print('Network error downloading from "' + file.url + '". Please try again')
 
 
-def getFileName(url):
+def getfilename(url, cd):
     """
     This function gets the file name for the url that will be saved to disk.
 
@@ -152,20 +173,21 @@ def getFileName(url):
     :param url: The url of the file
     :return: The file name
     """
-    fileName = geturlfilename(url)
-    if os.path.exists(fileName):
-        fileName = addprefixnum(fileName, 0)
-    return fileName
+    filename = getfilelocation(url, cd)
+    if os.path.exists(filename):
+        filename = addprefixnum(filename, 0)
+    return filename
 
 
 def getfilelocation(filelink, cd):
     urlobj = urlparse(filelink)
+    filelocation = urlobj.netloc + urlobj.path
 
     # if relative path
     if urlobj.netloc == '':
-        urlobj = urlparse(cd + urlobj.path)
+        filelocation = cd + urlobj.path
 
-    return urlobj.netloc + urlobj.path
+    return filelocation
 
 
 def geturllocation(filename, urlbase):
@@ -179,8 +201,8 @@ def geturllocation(filename, urlbase):
     urlobj = urlparse(filename)
 
     # if it is just the file name then attach the cd
-    if urlobj.netloc == '':
-        return urlbase + filename
+    if urlobj.scheme == '':
+        return urllib.parse.urljoin(urlbase, filename)
 
     return filename
 
@@ -199,13 +221,14 @@ def geturlfilename(url):
     return ''
 
 
-def addprefixnum(fileName, times):
+def addprefixnum(filelocation, times):
     """
     Recursively add a number before the files extension until it is unique
     """
-    if os.path.exists(getprefixname(fileName, times)):
-        return addprefixnum(fileName, times + 1)
-    return getprefixname(fileName, times)
+    prefixname = getprefixname(filelocation, times)
+    if os.path.exists(prefixname):
+        return addprefixnum(filelocation, times + 1)
+    return prefixname
 
 
 def getprefixname(fileName, prefix):
@@ -235,6 +258,10 @@ class File:
         index = self.filelocation.find(self.filename)
         return self.filelocation[:index]
 
+    def getrelativedir(self, cd):
+        index = self.filelocation.find(cd)
+        return self.filelocation[index + len(cd):]
+
 
 class HTMLlinks(HTMLParser):
     """
@@ -257,6 +284,7 @@ class HTMLlinks(HTMLParser):
         elif tag == 'img' and attrs[0][0] == 'src':
             self.positions.append(self.getpos())
             self.links.append(attrs[0])
+            print(attrs[0])
 
 
 pywget('http://homepages.ecs.vuw.ac.nz/~ian/nwen241/index.html')
