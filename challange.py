@@ -5,18 +5,19 @@ import os
 
 files = []
 
+
 def pywget(url, depth=2):
     # create root path
 
-    urlobj = urlparse(getPath(url, getUrlFileName(url)))
-    urldir = urlobj.netloc + urlobj.path
-    print(urldir)
+    # urlobj = urlparse(getPath(url, getUrlFileName(url)))
+    # urldir = urlobj.netloc + urlobj.path
+    # print(urldir)
+    #
+    # # create main directory
+    # if not os.path.exists(urldir):
+    #     os.makedirs(urldir)
 
-    # create main directory
-    if not os.path.exists(urldir):
-        os.makedirs(urldir)
-
-    downloadroot(url, 2, urldir)
+    downloadroot(url, 2)
 
 
 def downloadroot(url, depth, cd=''):
@@ -24,16 +25,16 @@ def downloadroot(url, depth, cd=''):
         return
 
     # Get root file
-    rootFileName = getFileName(url)
-    downLoadFile(url, cd + rootFileName)
-    files.append(url)
-    urlparse(url)
+    rootfile = File(getFileName(url), getfilelocation(url, cd), url)
+    downLoadFile(rootfile)
+    files.append(rootfile)
 
     # Do not try and download links if file is not an html file
-    if getExtension(rootFileName) == 'html' or getExtension(rootFileName) == 'htm':
-        downloadlinks(rootFileName, url, depth, cd)
+    if rootfile.getextension() == 'html' or rootfile.getextension() == 'htm':
+        downloadlinks(rootfile, depth)
 
-def downloadlinks(rootfilename, url, depth=0, cd=''):
+
+def downloadlinks(rootfile, depth=0):
     """
     Download all the links in the provided file if they are from the same domain as the url provided
 
@@ -41,28 +42,25 @@ def downloadlinks(rootfilename, url, depth=0, cd=''):
     :param url: The url of the root html file. Used to check if links are from the same domain
     :return:
     """
-    rooturl = urlparse(url)
-    htmlParser = getLinkedFiles(cd + rootfilename)
+    htmlParser = getLinkedFiles(rootfile)
     for index, link in enumerate(htmlParser.links):
-        # print(htmlParser.positions[index])
         linkurlparse = urlparse(link[1])
-        linkurl = linkurlparse.geturl()
-        linkFileName = getFileName(link[1])
+        linkfile = File(getFileName(rootfile.url), getfilelocation(link[1], rootfile.getdirectory()),
+                        geturllocation(link[1], rootfile.url), link[0])
 
         if linkurlparse.netloc == '':
             # If the link is relative then get the path to the link from the root url
-            linkurl = getPath(url, getUrlFileName(url)) + linkurlparse.path
-            downLoadFile(linkurl, cd + linkFileName)
-            updateRootLink(cd + rootfilename, link[0], linkFileName, htmlParser.positions[index])
-        elif linkurlparse.netloc == rooturl.netloc:
-            downLoadFile(linkurlparse.geturl(), cd + linkFileName)
-            updateRootLink(cd + rootfilename, link[0], linkFileName, htmlParser.positions[index])
+            downLoadFile(linkfile)
+            updaterootfilelink(rootfile, linkfile.filetype, linkfile.filename, htmlParser.positions[index])
+        elif linkurlparse.netloc == urlparse(rootfile.url).netloc:
+            downLoadFile(linkfile)
+            updaterootfilelink(rootfile, linkfile.filetype, linkfile.filename, htmlParser.positions[index])
 
-        if getExtension(linkFileName) == 'html':
-            downloadroot(linkurl, depth - 1, cd)
+        if linkfile.getextension() == 'html':
+            downloadlinks(linkfile, depth - 1)
 
 
-def updateRootLink(rootFileName, linkType, linkFileName, pos, cd=''):
+def updaterootfilelink(rootfile, linkType, linkFileName, pos,):
     """
     Update the link at pos to use the linkfilename.
 
@@ -72,7 +70,7 @@ def updateRootLink(rootFileName, linkType, linkFileName, pos, cd=''):
     :param pos: The position of the html tag that contains the link to update. pos[0] = line of link. pos[1] = line offset of link
     :return:
     """
-    rootFile = open(cd + rootFileName, 'r')
+    rootFile = open(rootfile.filelocation, 'r')
     rootData = rootFile.readlines()
     rootFile.close()
 
@@ -83,7 +81,7 @@ def updateRootLink(rootFileName, linkType, linkFileName, pos, cd=''):
     indexEnd = tag.find('"', indexStart + 1) + 1
     rootData[line] = rootData[line].replace(tag, insert(indexStart, indexEnd, tag, linkFileName), 1)
 
-    rootFile = open(cd + rootFileName, 'w')
+    rootFile = open(rootfile.filelocation, 'w')
     rootFile.writelines(rootData)
     rootFile.close()
 
@@ -113,14 +111,14 @@ def getPath(url, fileName):
     return url[:index]
 
 
-def getLinkedFiles(fileName, cd=''):
+def getLinkedFiles(file, cd=''):
     """
     Get all files that are linked from the file specified
 
     :param fileName: The file name to get all the <a> and <img> links from
     :return: An htmlparser with the links stored in 'links'
     """
-    file = open(cd + fileName, 'r')
+    file = open(file.filelocation, 'r')
     filecontent = file.read()
     file.close()
 
@@ -129,19 +127,19 @@ def getLinkedFiles(fileName, cd=''):
     return h
 
 
-def downLoadFile(url, fileName):
+def downLoadFile(file):
     """
     Download a file to disk. Will make sure that the downloaded file name is unique.
     :param url: The url of the file to download
     :param fileName: What to name the downloaded file
     :return:
     """
-    print('File ' + fileName + ' downloading....')
+    print('File ' + file.filelocation + ' downloading....')
     try:
-        urllib.request.urlretrieve(url, fileName)
+        urllib.request.urlretrieve(file.url, file.filelocation)
         print('File downloaded!')
     except:
-        print('Network error downloading from "' + url + '". Please try again')
+        print('Network error downloading from "' + file.url + '". Please try again')
 
 
 def getFileName(url):
@@ -154,13 +152,40 @@ def getFileName(url):
     :param url: The url of the file
     :return: The file name
     """
-    fileName = getUrlFileName(url)
+    fileName = geturlfilename(url)
     if os.path.exists(fileName):
-        fileName = addPrefixNum(fileName, 0)
+        fileName = addprefixnum(fileName, 0)
     return fileName
 
 
-def getUrlFileName(url):
+def getfilelocation(filelink, cd):
+    urlobj = urlparse(filelink)
+
+    # if relative path
+    if urlobj.netloc == '':
+        urlobj = urlparse(cd + urlobj.path)
+
+    return urlobj.netloc + urlobj.path
+
+
+def geturllocation(filename, urlbase):
+    """
+    This will return the files url. This will add protocal and domain if not already added
+
+    :param filename: the name of the file
+    :param cd: the current directory.
+    :return: the url for the file
+    """
+    urlobj = urlparse(filename)
+
+    # if it is just the file name then attach the cd
+    if urlobj.netloc == '':
+        return urlbase + filename
+
+    return filename
+
+
+def geturlfilename(url):
     """
     This function gets the filename from the url provided.
 
@@ -174,16 +199,16 @@ def getUrlFileName(url):
     return ''
 
 
-def addPrefixNum(fileName, times):
+def addprefixnum(fileName, times):
     """
     Recursively add a number before the files extension until it is unique
     """
-    if os.path.exists(getPrefixedName(fileName, times)):
-        return addPrefixNum(fileName, times + 1)
-    return getPrefixedName(fileName, times)
+    if os.path.exists(getprefixname(fileName, times)):
+        return addprefixnum(fileName, times + 1)
+    return getprefixname(fileName, times)
 
 
-def getPrefixedName(fileName, prefix):
+def getprefixname(fileName, prefix):
     """
     This function will return the filename with the prefix added before the files extension
     """
@@ -195,10 +220,20 @@ def getPrefixedName(fileName, prefix):
         index -= 1
 
 
-def getExtension(fileName):
+class File:
+    def __init__(self, filename, filelocation, url, filetype=''):
+        self.filename = filename
+        self.filelocation = filelocation
+        self.url = url
+        self.filetype = filetype
 
-    sections = fileName.split('.')
-    return sections[len(sections) - 1]
+    def getextension(self):
+        sections = self.filelocation.split('.')
+        return sections[len(sections) - 1]
+
+    def getdirectory(self):
+        index = self.filelocation.find(self.filename)
+        return self.filelocation[:index]
 
 
 class HTMLlinks(HTMLParser):
@@ -222,5 +257,6 @@ class HTMLlinks(HTMLParser):
         elif tag == 'img' and attrs[0][0] == 'src':
             self.positions.append(self.getpos())
             self.links.append(attrs[0])
+
 
 pywget('http://homepages.ecs.vuw.ac.nz/~ian/nwen241/index.html')
