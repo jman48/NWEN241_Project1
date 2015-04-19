@@ -3,32 +3,21 @@ from urllib.parse import urlparse
 import urllib.request
 import os
 
-files = []
+downloadedfiles = []  # Used to store things we download so that we do not download them again
 
 
 def pywget(url, depth=3):
-    # create root path
+    """
+    This function will download all files from the provided url and recursivelly download all links from the file at the specified url
 
-    # urlobj = urlparse(getPath(url, getUrlFileName(url)))
-    # urldir = urlobj.netloc + urlobj.path
-    # print(urldir)
-    #
-    # # create main directory
-    # if not os.path.exists(urldir):
-    # os.makedirs(urldir)
-
-    downloadroot(url, 2)
-
-
-def downloadroot(url, depth, cd=''):
-    if depth < 0 or url in files:
-        return
-
+    :param url: The url to get the root file from
+    :param depth: The depth of recursive function before it should terminate
+    :return:
+    """
     # Get root file
-    name = getfilename(url, cd)
-    rootfile = File(geturlfilename(url), getfilename(url, cd), url)
+    rootfile = File(geturlfilename(url), getfilename(url, ''), url)
     downloadfile(rootfile)
-    files.append(rootfile)
+    downloadedfiles.append(rootfile)
 
     # Do not try and download links if file is not an html file
     if rootfile.getextension() == 'html' or rootfile.getextension() == 'htm':
@@ -37,38 +26,39 @@ def downloadroot(url, depth, cd=''):
 
 def downloadlinks(rootfile, depth=0):
     """
-    Download all the links in the provided file if they are from the same domain as the url provided
+    Download all the links in the provided file if they are from the same domain as the rootfile provided
 
-    :param rootfilename: The name of the root html file to download the links from
-    :param url: The url of the root html file. Used to check if links are from the same domain
+    :param rootfile: The root file to download all the links from
+    :param depth: The recursive depth to go to until the function should stop
     :return:
     """
+
     if depth < 0:
         return
-    files.append(rootfile.filename)
+    downloadedfiles.append(rootfile.filename)
 
-    htmlfiles = []
-    htmlParser = getLinkedFiles(rootfile)
-    for index, link in enumerate(htmlParser.links):
-        if geturlfilename(link[1]) in files:
-            continue
+    htmlfiles = []  # all html file that need links downloaded
+    htmlparser = getLinkedFiles(rootfile)
+
+    for index, link in enumerate(htmlparser.links):
+        if geturlfilename(link[1]) in downloadedfiles:
+            continue    # if we already downloaded this file then just skip it
 
         linkurlparse = urlparse(link[1])
-        name = getfilename(link[1], rootfile.getdirectory())
         linkfile = File(geturlfilename(link[1]),
                         getfilename(link[1], rootfile.getdirectory()),
                         geturllocation(link[1], rootfile.url), link[0])
 
-        # Add them to list so we do not download them again
-        files.append(geturlfilename(link[1]))
+        # Add the file to the list so we do not download them again
+        downloadedfiles.append(geturlfilename(link[1]))
 
         if linkurlparse.netloc == '':
             # If the link is relative then get the path to the link from the root url
             downloadfile(linkfile)
-            updaterootfilelink(rootfile, linkfile, htmlParser.positions[index])
+            updaterootfilelink(rootfile, linkfile, htmlparser.positions[index])
         elif linkurlparse.netloc == urlparse(rootfile.url).netloc:
             downloadfile(linkfile)
-            updaterootfilelink(rootfile, linkfile, htmlParser.positions[index])
+            updaterootfilelink(rootfile, linkfile, htmlparser.positions[index])
         if linkfile.getextension() == 'html':
             htmlfiles.append(linkfile)
 
