@@ -74,33 +74,33 @@ def get_url_file_name(url):
     return 'index.html'
 
 
-def add_prefix_num(filename, times):
+def add_prefix_num(file_name, times):
     """
     This recursive function will add a number to the file name so that is is unique. i.e index.1.html
 
-    :param filename: The name of the file from the url
+    :param file_name: The name of the file from the url
     :param times: The prefix number to add
     :return: A unique file name for the local file system
     """
 
-    if os.path.exists(get_prefixed_name(filename, times)):
-        return add_prefix_num(filename, times + 1)
-    return get_prefixed_name(filename, times)
+    if os.path.exists(get_prefixed_name(file_name, times)):
+        return add_prefix_num(file_name, times + 1)
+    return get_prefixed_name(file_name, times)
 
 
-def get_prefixed_name(filename, prefix):
+def get_prefixed_name(file_name, prefix):
     """
     This function will return the filename with the prefix added before the files extension
 
-    :param filename: The file name to add the prefix to
+    :param file_name: The file name to add the prefix to
     :param prefix: The prefix to add
     :return: The filename with the prefix added before the file extension
     """
 
-    index = len(filename) - 1
+    index = len(file_name) - 1
 
     # loop backwards until we find the first '.' this is where the file extension starts
     while index > 0:
-        if filename[index] == '.':
-            return filename[:index] + '.' + str(prefix) + filename[index:]
+        if file_name[index] == '.':
+            return file_name[:index] + '.' + str(prefix) + file_name[index:]
         index -= 1
