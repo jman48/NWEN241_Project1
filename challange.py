@@ -25,6 +25,7 @@ def downloadroot(url, depth, cd=''):
         return
 
     # Get root file
+    name = getfilename(url, cd)
     rootfile = File(geturlfilename(url), getfilename(url, cd), url)
     downloadfile(rootfile)
     files.append(rootfile)
@@ -53,6 +54,7 @@ def downloadlinks(rootfile, depth=0):
             continue
 
         linkurlparse = urlparse(link[1])
+        name = getfilename(link[1], rootfile.getdirectory())
         linkfile = File(geturlfilename(link[1]),
                         getfilename(link[1], rootfile.getdirectory()),
                         geturllocation(link[1], rootfile.url), link[0])
@@ -156,6 +158,7 @@ def downloadfile(file):
         if not os.path.exists(file.getdirectory()):
             os.makedirs(file.getdirectory())
 
+        f = file.getdirectory()
         urllib.request.urlretrieve(file.url, file.filelocation)
         # print('File downloaded!')
     except Exception as e:
@@ -255,7 +258,7 @@ class File:
         return sections[len(sections) - 1]
 
     def getdirectory(self):
-        index = self.filelocation.find(self.filename)
+        index = self.filelocation.find(geturlfilename(self.filelocation))
         return self.filelocation[:index]
 
     def getrelativedir(self, cd):
