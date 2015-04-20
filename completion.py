@@ -12,6 +12,12 @@ import os
 
 
 def pywget(url):
+    """
+    This function will download the file from the url specified and all files that are linked from that file
+
+    :param url: The url of the root file to download and get all files linked in it
+    :return:
+    """
     print('\nProgram starting download from ' + url + '\n')
 
     # Get root file
@@ -183,7 +189,6 @@ def get_url_file_name(url):
     sections = url.split('/')
     if sections[len(sections) - 1].find('.') > -1:
         return sections[len(sections) - 1]
-        # return 'index.html'
 
 
 def add_prefix_num(file_name, times):

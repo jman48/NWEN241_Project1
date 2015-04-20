@@ -21,6 +21,7 @@ def pywget(url):
     try:
         urllib.request.urlretrieve(url, filename)
         print('File downloaded!')
+        print('\nAll done :)')
     except:
         print('Network error. Please try again')
 
